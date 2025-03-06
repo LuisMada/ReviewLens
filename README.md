@@ -1,4 +1,4 @@
-# **ReviewLens - AI-Powered Review Search**
+# **ReviewLens
 
 ## **Project Description**
 ReviewLens is an AI-powered review search and analysis tool that leverages **ChromaDB**, **LangChain**, and **Streamlit** to provide users with a robust platform for querying customer reviews. It allows users to search, analyze, and summarize reviews while also visualizing sentiment distribution.
