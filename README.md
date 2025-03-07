@@ -1,79 +1,154 @@
-# **ReviewLens**
+# Review Analysis Dashboard
 
-## **Project Description**
-ReviewLens is an AI-powered review search and analysis tool that leverages **ChromaDB**, **LangChain**, and **Streamlit** to provide users with a robust platform for querying customer reviews. It allows users to search, analyze, and summarize reviews while also visualizing sentiment distribution.
+A Streamlit application for analyzing customer reviews using semantic search, category filtering, and AI-generated insights.
 
----
+## Features
 
-## **Features & Capabilities**
-### **Core Functionalities**
-- **Review Search**: Query reviews from a vector database (ChromaDB) using semantic search.
-- **Sentiment Filtering**: Filter reviews based on sentiment (Positive, Neutral, Negative).
-- **AI-Powered Summarization**: Generate a summary of relevant reviews using OpenAI's GPT-4.
-- **Sentiment Distribution Visualization**: Display sentiment analysis results in a pie chart.
-- **Review Metadata Display**: Show additional information, including rating scores, timestamps, and topics.
-- **Data Ingestion & Indexing**: Automatically processes CSV review files and indexes them in ChromaDB.
+- **Semantic Search**: Leverages embeddings to find reviews similar to your query
+- **Category Filtering**: Automatically detects relevant categories in your query and filters results
+- **AI-Generated Insights**: Uses OpenAI's GPT-4o to analyze reviews and provide actionable insights
+- **Interactive Visualizations**: Displays sentiment distribution and topic breakdowns
+- **Hybrid Search Options**: Combine semantic search with category filtering for optimal results
+- **Expandable Insights**: View complete analyses without truncation
+- **Download Capability**: Save insights as text files for sharing or reference
 
-### **Technologies Used**
-- **ChromaDB**: A lightweight and efficient vector database for storing and retrieving reviews.
-- **LangChain**: Utilized for document processing, embeddings, and integration with GPT-based summarization.
-- **HuggingFace Embeddings**: Sentence-transformers (`all-MiniLM-L6-v2`) used for embedding review content.
-- **Streamlit**: Web-based UI for interactive search, filtering, and visualization.
-- **Matplotlib**: Used for plotting sentiment distribution charts.
-- **Pandas**: Handling CSV file ingestion and preprocessing.
-- **OpenAI GPT-4 (Optional)**: Summarizing reviews if an API key is provided.
+## Getting Started
 
----
+### Prerequisites
 
-## **Installation & Setup**
-### **Prerequisites**
 - Python 3.8+
-- Required libraries:
-  ```sh
-  pip install streamlit chromadb langchain pandas matplotlib sentence-transformers openai
-  ```
+- Streamlit
+- Pandas
+- Plotly
+- ChromaDB
+- LangChain
+- OpenAI API key
+- Sentence Transformers
 
-### **How to Run**
-1. **Prepare Review Data**
-   - Place review CSV files in the `data/` folder.
-   - Ensure required columns are present: `content, sentiment, score, at, topics`.
+### Installation
 
-2. **Index Reviews**
-   - Run `index_reviews.py` to process and store reviews in ChromaDB.
-   ```sh
+1. Clone this repository
+2. Install required packages:
+   ```bash
+   pip install streamlit pandas plotly chromadb langchain langchain-community openai sentence-transformers
+   ```
+3. Set up your data folder and add review CSV files (see Data Format section)
+
+### Running the Application
+
+1. First, index your review data:
+   ```bash
    python index_reviews.py
    ```
-
-3. **Launch the Web App**
-   - Start the Streamlit app with:
-   ```sh
-   streamlit run app.py
+2. Launch the Streamlit app:
+   ```bash
+   streamlit run app2.py
    ```
 
-4. **Interact with the UI**
-   - Enter a query to search for relevant reviews.
-   - Use the sentiment filter to refine results.
-   - View AI-generated summaries and sentiment distribution.
+## Data Format
 
----
+Your review CSV files should have the following columns:
+- `content`: The text of the review
+- `sentiment`: The sentiment label (e.g., "Positive", "Negative")
+- `score`: A numerical score or rating
+- `at`: Timestamp of the review
+- `topics`: Comma-separated list of relevant categories
 
-## **File Structure**
-```plaintext
-/ReviewLens
-│── app.py                 # Streamlit app for querying and visualizing reviews
-│── index_reviews.py        # Script for indexing CSV reviews into ChromaDB
-│── data/                   # Folder containing review CSV files
-│── chroma_db/              # Persistent ChromaDB storage
+Place your CSV files in a folder named `data` in the root directory.
+
+## Scripts
+
+### index_reviews.py
+
+```python
+import os
+import pandas as pd
+import chromadb
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+# Initialize ChromaDB
+DB_PATH = "chroma_db"
+chroma_client = chromadb.PersistentClient(path=DB_PATH)
+collection = chroma_client.get_or_create_collection(name="reviews")
+
+# Load embedding model
+embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+# Ensure 'data' folder exists
+data_folder = "data"
+if not os.path.exists(data_folder):
+    print("⚠️ Data folder not found! Creating 'data' directory.")
+    os.makedirs(data_folder)
+
+# Load all CSV files from data folder
+csv_files = [f for f in os.listdir(data_folder) if f.endswith(".csv")]
+
+if not csv_files:
+    print("⚠️ No CSV files found in 'data' folder. Please add your review dataset.")
+    exit()
+
+# Read and index data
+for file in csv_files:
+    file_path = os.path.join(data_folder, file)
+    df = pd.read_csv(file_path)
+
+    # Check if required columns exist
+    required_columns = {"content", "sentiment", "score", "at", "topics"}
+    if not required_columns.issubset(df.columns):
+        print(f"⚠️ Skipping {file}: Missing required columns {required_columns - set(df.columns)}")
+        continue
+
+    # Store in ChromaDB
+    for i, row in df.iterrows():
+        if isinstance(row["content"], str):  # Ensure valid review text
+            collection.add(
+                ids=[f"{file}_{i}"],  # Unique ID
+                documents=[row["content"]],  # Review text
+                metadatas=[{
+                    "sentiment": row["sentiment"],
+                    "score": row["score"],
+                    "topics": row["topics"],
+                    "timestamp": row["at"],
+                    "source": file
+                }]
+            )
+
+print("✅ All reviews indexed successfully!")
 ```
 
----
+### app2.py
 
-## **Next Steps**
-- **Improve Summarization**: Test alternative LLMs for summarization efficiency.
-- **Enhance Filtering**: Add more advanced filtering (e.g., keywords, rating scores).
-- **Deployment**: Deploy as a web service for broader accessibility.
+This is the main application file that implements the dashboard. It contains:
 
----
+- Search functionality with both semantic and category-based approaches
+- OpenAI integration for query categorization and insights generation
+- Data visualization using Plotly
+- Streamlit UI with interactive controls
 
-🚀 **Enjoy using ReviewLens!**
+## How It Works
 
+1. **Indexing**: `index_reviews.py` reads your review data and stores it in ChromaDB with embeddings
+2. **Searching**: When you enter a query, the app finds relevant reviews using:
+   - Vector embeddings for semantic similarity
+   - Category detection for filtering
+3. **Analysis**: The app sends the most relevant reviews to OpenAI to generate insights
+4. **Visualization**: Results are displayed in tables and charts for easy understanding
+
+## Search Settings
+
+In the sidebar, you can adjust:
+
+- **Semantic Search**: Toggle vector-based search on/off
+- **Category Filtering**: Enable/disable filtering by detected categories
+- **Number of Results**: Adjust how many reviews to return
+
+## Troubleshooting
+
+- **No results found**: Try broadening your query or disabling category filtering
+- **Missing embeddings**: Ensure you've run `index_reviews.py` before launching the app
+- **API errors**: Verify your OpenAI API key is correct and has sufficient credits
+
+## Contributing
+
+Feel free to submit issues or pull requests to improve the functionality.
